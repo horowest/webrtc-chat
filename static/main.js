@@ -1,110 +1,100 @@
-const ROOT_URL = "https://horowest-ubiquitous-system-69g59vww67vh4jv7-8080.preview.app.github.dev/webchat";
-
-
-const connectionObject = {
-    conn: new RTCPeerConnection(),
+const ROOT_URL = "http://localhost:8080/api/v1";
+const CONNECTION = {
+    rc: new RTCPeerConnection(),
     userId: crypto.randomUUID()
 }
 
-const intervals = {
+const connect_button = document.getElementById("connect-btn");
+const disconnect_btn = document.getElementById("disconnect-btn");
+const send_button = document.getElementById("send-btn");
 
+const messageStack = [];
+
+const intervals = {
 }
 
-let connect_button = document.getElementById("connect-btn");
-connect_button.onclick = e => handleConnection(connectionObject);
+setup();
 
-let disconnect_btn = document.getElementById("disconnect-btn");
-disconnect_btn.onclick = e => connectionObject.conn.close();
+function setup() {
+    console.log("User ID: " + CONNECTION.userId);
+    
+    // declare event listerners
+    connect_button.onclick = e => handleConnection(CONNECTION);
+    disconnect_btn.onclick = e => CONNECTION.rc.close();
+    send_button.onclick = e => messageHandler(CONNECTION);
+    
+    CONNECTION.rc.onicecandidate = e => { 
+        const SDP_JSON = JSON.stringify(CONNECTION.rc.localDescription);
+        console.log(SDP_JSON);
 
-console.log("User ID: " + connectionObject.userId);
+        // document.getElementById("sdp").value = SDP_JSON;
+    };
+    
+    // create channel
+    CONNECTION.channel = CONNECTION.rc.createDataChannel("channel");
+    
+    // create event listerners for channel
+    CONNECTION.channel.onopen = e => connectionOpened();
+    CONNECTION.channel.onclose = e => connectionClosed();
+    CONNECTION.channel.onmessage = e => messageReciever(e);
+    
+    // create offer and set as local description
+    const offer = CONNECTION.rc.createOffer();
+    CONNECTION.rc.setLocalDescription(offer);
+}
 
-connectionObject.conn.onicecandidate = e => { 
-    const SDP_JSON = JSON.stringify(connectionObject.conn.localDescription);
-    document.getElementById("sdp").value = SDP_JSON;
-    // console.log(SDP_JSON);
-
-};
-
-// create channel
-connectionObject.channel = connectionObject.conn.createDataChannel("channel");
-
-// create event listerners for channel
-connectionObject.channel.onopen = e => connectionOpened();
-connectionObject.channel.onclose = e => connectionClosed();
-
-connectionObject.channel.onmessage = e => {
-    document.getElementById("reply").innerHTML = e.data;
-};
-
-
-// create offer and set as local description
-const offer = connectionObject.conn.createOffer();
-connectionObject.conn.setLocalDescription(offer);
-
-// buttons and evenet listners
-// const offer_button = document.getElementById("offer-btn");
-// offer_button.addEventListener('click', e => createOffer(connectionObject));
-
-// const answer_button = document.getElementById("answer-btn");
-// answer_button.addEventListener('click', e => createAnswer(connectionObject, null))
-
-const send_button = document.getElementById("send-btn");
-send_button.addEventListener('click', e => messageHandler(connectionObject))
-
-
-function createOffer(connectionObject, response) {
-    let answer = JSON.parse(document.getElementById("sdp").value);
-
+function createOffer(CONNECTION, response) {
+    // let answer = JSON.parse(document.getElementById("sdp").value);    
     if(response != null) {
-        answer = response.key;
+        try {
+            CONNECTION.rc.setRemoteDescription(response.iceCandidate);
+        } catch(e) {
+            console.log(e);
+        }   
     }
         
-    try {
-        connectionObject.conn.setRemoteDescription(answer);
-    } catch(e) {
-        console.log(e);
-    }   
 }
 
-
-async function createAnswer(connectionObject, response) {
-    connectionObject.conn.ondatachannel = e => {
+async function createAnswer(CONNECTION, response) {
+    CONNECTION.rc.ondatachannel = e => {
         let channel = e.channel;
         
         // create event listerners for channel
         // channel.onopen = e => connectionOpened();
         // channel.onclose = e => connectionClosed();
-        channel.onmessage = e => {
-            document.getElementById("reply").innerHTML = e.data;
-        };
+        channel.onmessage = e => messageReciever(e);
 
-        connectionObject.channel = channel;
+        CONNECTION.channel = channel;
     };
 
-    let offer = JSON.parse(document.getElementById("sdp").value);
-
     if(response != null) {
-        offer = response.key;
+        let offer = response.iceCandidate;
+        CONNECTION.rc.setRemoteDescription(offer);
+        let answer = await CONNECTION.rc.createAnswer();
+        CONNECTION.rc.setLocalDescription(answer);
+    
+        return answer;
     }
 
-    connectionObject.conn.setRemoteDescription(offer);
-    let answer = await connectionObject.conn.createAnswer();
-    connectionObject.conn.setLocalDescription(answer);
-
-    return answer;
 }
 
-
-function messageHandler(connectionObject) {
+function messageHandler(CONNECTION) {
     const msg = document.getElementById("msg").value;
-    connectionObject.channel.send(msg);
+    CONNECTION.channel.send(msg);
+}
+
+function messageReciever(msgEvent, callback = null) {
+    document.getElementById("reply").innerHTML += "<br/>" + msgEvent.data;
+
+    if(callback != null) {
+        callback(msgEvent);
+    }
 }
 
 
 function connectionOpened() {
     console.log("Connected");
     document.getElementById("conn-msg").innerHTML = "Connected";
-    document.getElementById("sdp").value = "";
     
     // enable elements
     document.getElementById("connect-btn").disabled = true;
@@ -132,17 +122,17 @@ function connectionClosed() {
 
 }
 
-async function handleConnection(connectionObject) {
-    const offerKey = connectionObject.conn.localDescription;
+async function handleConnection(CONNECTION) {
+    const offerKey = CONNECTION.rc.localDescription;
     const username = document.getElementById("username").value;
     const otherusername = document.getElementById("otherusername").value;
-    connectionObject.username = username;
-    connectionObject.otherusername = otherusername;
+    CONNECTION.username = username;
+    CONNECTION.otherusername = otherusername;
 
     let payload = {
-        username: connectionObject.username,
-        otherUsername: connectionObject.otherusername,
-        key: {
+        username: CONNECTION.username,
+        otherUsername: CONNECTION.otherusername,
+        iceCandidate: {
             type: offerKey.type,
             sdp: offerKey.sdp
         }
@@ -151,16 +141,16 @@ async function handleConnection(connectionObject) {
     let res = await apiCall("/exchange", "POST", payload);
 
 
-    if(res.ok && res.status === 200) {
+    if(res.status === 202) {
         let data = await res.json();
         // console.log(data);
 
         // create answer for offer and send it to server
-        const answer = await createAnswer(connectionObject, data);
-        res = apiCall("/connect", "POST", {
-            username: connectionObject.username,
-            otherUsername: connectionObject.otherusername,
-            key: {
+        const answer = await createAnswer(CONNECTION, data);
+        res = apiCall("/exchange", "POST", {
+            username: data.username,
+            otherUsername: CONNECTION.username,
+            iceCandidate: {
                 type: answer.type,
                 sdp: answer.sdp
             }
@@ -168,13 +158,13 @@ async function handleConnection(connectionObject) {
         document.getElementById("conn-msg").innerHTML = "Waiting to connect";
 	    res.then(res => res.text()).then(data => console.log(data));
 
-    } else if(res.status === 204) {
+    } else if(res.status === 201) {
         // wait for offer to be answered
         // then use the answer to set remote desciption
         console.log("Waiting for offer to be answered");
         document.getElementById("conn-msg").innerHTML = "Waiting for offer to be answered";
         // check for offer
-        intervals.offer = setInterval(() => checkForOffer(connectionObject), 10000);
+        intervals.offer = setInterval(() => checkForOffer(CONNECTION), 5000);
     }
 
 }
@@ -182,16 +172,16 @@ async function handleConnection(connectionObject) {
 /*
  *  polling for connection
  */
-async function checkForOffer(connectionObject) {
+async function checkForOffer(CONNECTION) {
     let res = await apiCall("/connect?" + new URLSearchParams({
-        username: connectionObject.username,
-        otherUsername: connectionObject.otherusername
+        username: CONNECTION.username,
+        otherUsername: CONNECTION.otherusername
     }), "GET");
 
     if(res.status == 200) {
         clearInterval(intervals.offer);
         const data = await res.json();
-        createOffer(connectionObject, data);
+        createOffer(CONNECTION, data);
         // return await res.json();
     }
 }
