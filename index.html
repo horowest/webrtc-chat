@@ -11,30 +11,34 @@
 <body>
 
 
-    <div class="container">
-        <div class="row mb-5 mt-2">
+    <div class="container text-left">
+        <div id="app-name" class="row mb-5 mt-2">
             <h1>WebRTC Chat</h1>
         </div>
         <div class="row">
-            <div class="col">
-                <input type="text" id="username" placeholder="username"/>
-                <button id="connect-btn">connect</button>
-                <button id="disconnect-btn" disabled>disconnect</button>
+            <div class="col-4 user-form">
+                <div class="input-group mb-3">
+                    <span class="input-group-text" id="basic-addon1">@</span>
+                    <input id="username" type="text" class="form-control" placeholder="Username" aria-label="Username" aria-describedby="basic-addon1">
+                </div>                  
+                <button id="connect-btn" class="btn btn-outline-primary">connect</button>
+                <button id="disconnect-btn" class="btn btn-outline-secondary" disabled>disconnect</button>
                 <br>
                 <span id="conn-msg"></span>
             </div>
-            <div class="col">
-                <div id="msg-div">
-                    <div class="input-group mb-3 position-absolute bottom-0 end-0">
-                        <span class="input-group-text">Message:</span>
-                        <input type="text" class="form-control  msg-box" id="msg" aria-label="message" aria-describedby="basic-addon1" disabled>
-                        <!--Msg: <input type="text" id="msg" class="msg-box" disabled>-->
-                        <button id="send-btn" class="msg-box" disabled>Send</button>
-                    </div>
+            <div class="col-5"></div>
+            <div class="col-7 text-left mt-3 mb-5 msg-div">
+                <div class="msg-box vstack gap-1" id="reply">
                 </div>
-                <br>
-                <div>
-                    Reply: <span id="reply"></span>
+            </div>
+        </div>
+        <div class="row">
+            <div id="msg-div" class="col-12">
+                <div class="input-group">
+                    <span class="input-group-text">Message:</span>
+                    <input type="text" class="form-control  msg-box" id="msg" aria-label="message" aria-describedby="basic-addon1" disabled>
+                    <!--Msg: <input type="text" id="msg" class="msg-box" disabled>-->
+                    <button id="send-btn" class="msg-box btn btn-outline-primary" disabled>Send</button>
                 </div>
             </div>
         </div>

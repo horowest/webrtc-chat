@@ -1,3 +1,29 @@
 #sdp {
     visibility: hidden;
 }
+
+#msg-div {
+    position: fixed;
+    bottom: 1%;
+    max-width: 90%;
+}
+
+.msg-box {
+    max-height: 60%;
+}
+
+.user-form {
+    margin-top: 10vh;
+    position: fixed;
+}
+
+#app-name {
+    position: fixed;
+}
+
+.ms {
+    padding: 10px;
+    border: 1px dashed grey;
+    border-radius: 5px;
+    margin: 5px;
+}

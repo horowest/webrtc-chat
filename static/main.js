@@ -80,11 +80,20 @@ async function createAnswer(CONNECTION, response) {
 
 function messageHandler(CONNECTION) {
     const msg = document.getElementById("msg").value;
+
+    if(msg === '') return;
+
+    let val = '<div class="ms">U => ' + msg + '</div>';
+    document.getElementById("reply").innerHTML = val + document.getElementById("reply").innerHTML;
+
     CONNECTION.channel.send(msg);
 }
 
 function messageReciever(msgEvent, callback = null) {
-    document.getElementById("reply").innerHTML += "<br/>" + msgEvent.data;
+    // document.getElementById("reply").innerHTML += "<br/>" + msgEvent.data;
+
+    let val = '<div class="ms">O => ' + msgEvent.data + '</div>';
+    document.getElementById("reply").innerHTML = val + document.getElementById("reply").innerHTML;
 
     if(callback != null) {
         callback(msgEvent);
@@ -125,9 +134,9 @@ function connectionClosed() {
 async function handleConnection(CONNECTION) {
     const offerKey = CONNECTION.rc.localDescription;
     const username = document.getElementById("username").value;
-    const otherusername = document.getElementById("otherusername").value;
+    // const otherusername = document.getElementById("otherusername").value;
     CONNECTION.username = username;
-    CONNECTION.otherusername = otherusername;
+    // CONNECTION.otherusername = otherusername;
 
     let payload = {
         username: CONNECTION.username,
